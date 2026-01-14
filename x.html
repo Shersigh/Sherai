@@ -1,0 +1,288 @@
+
+
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Shera AI - Polyglot Code Studio</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/4.0.2/marked.min.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700&family=Fira+Code:wght@400;500&display=swap');
+        
+        body { font-family: 'Plus Jakarta Sans', sans-serif; background-color: #f8fafc; overflow: hidden; }
+        code, pre { font-family: 'Fira Code', monospace !important; }
+        
+        .custom-scrollbar::-webkit-scrollbar { width: 5px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+        
+        .message-bubble { animation: messageSlide 0.3s ease-out forwards; }
+        @keyframes messageSlide { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+        #media-modal {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(15, 23, 42, 0.9);
+            z-index: 100;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .upload-btn-active { transform: rotate(45deg); background-color: #ef4444 !important; }
+        #attachment-menu { transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1); transform-origin: bottom left; }
+    </style>
+</head>
+<body class="h-screen flex flex-col md:flex-row">
+
+    <div id="toast" class="fixed top-5 right-5 bg-indigo-600 text-white px-6 py-3 rounded-2xl z-[110] hidden shadow-2xl font-bold"></div>
+
+    <!-- Media Modal -->
+    <div id="media-modal" onclick="closeModal()">
+        <div class="relative max-w-5xl w-full max-h-[90vh] flex flex-col items-center gap-4" onclick="event.stopPropagation()">
+            <img id="modal-img" class="hidden max-w-full max-h-[70vh] rounded-2xl shadow-2xl border-4 border-white/10" src="" alt="">
+            <div id="modal-code-wrap" class="hidden w-full bg-slate-900 rounded-2xl overflow-hidden p-4">
+                 <iframe id="code-preview-frame" class="w-full h-[60vh] bg-white rounded-lg border-none"></iframe>
+            </div>
+            <button onclick="closeModal()" class="px-8 py-3 bg-white/10 text-white rounded-full font-bold hover:bg-white/20 backdrop-blur-md">Close</button>
+        </div>
+    </div>
+
+    <!-- Sidebar (Three-line menu target) -->
+    <aside id="sidebar" class="w-80 bg-white border-r border-slate-200 flex flex-col h-full transition-transform duration-300 fixed md:relative z-40 -translate-x-full md:translate-x-0">
+        <div class="p-6 border-b border-slate-100 flex justify-between items-center">
+            <h1 class="text-xl font-black text-slate-800 flex items-center gap-2">
+                <span class="p-2 bg-indigo-600 rounded-lg text-white"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg></span>
+                Shera Pro
+            </h1>
+            <button onclick="toggleSidebar()" class="md:hidden p-2 text-slate-400 hover:text-slate-600">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+            </button>
+        </div>
+        
+        <div class="flex-1 overflow-y-auto p-4 space-y-6 custom-scrollbar">
+            <div>
+                <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest px-2 mb-3">Language Settings</p>
+                <select id="language-selector" class="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-semibold text-slate-700 outline-none focus:border-indigo-500 transition-all">
+                    <optgroup label="Global">
+                        <option value="English">English</option>
+                        <option value="Spanish">Español</option>
+                        <option value="French">Français</option>
+                        <option value="German">Deutsch</option>
+                        <option value="Japanese">日本語</option>
+                    </optgroup>
+                    <optgroup label="Indian Languages">
+                        <option value="Hindi">हिन्दी (Hindi)</option>
+                        <option value="Punjabi">ਪੰਜਾਬੀ (Punjabi)</option>
+                        <option value="Bengali">বাংলা (Bengali)</option>
+                        <option value="Tamil">தமிழ் (Tamil)</option>
+                        <option value="Telugu">తెలుగు (Telugu)</option>
+                        <option value="Marathi">मराठी (Marathi)</option>
+                        <option value="Gujarati">ગુજરાતી (Gujarati)</option>
+                        <option value="Kannada">ಕನ್ನಡ (Kannada)</option>
+                        <option value="Malayalam">മലയാളം (Malayalam)</option>
+                    </optgroup>
+                </select>
+            </div>
+
+            <div>
+                <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest px-2 mb-3">Projects</p>
+                <button onclick="newChat()" class="w-full py-3 px-4 bg-slate-100 text-slate-700 rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-slate-200 transition-all mb-2">
+                    <span>+ New Session</span>
+                </button>
+            </div>
+        </div>
+
+        <div class="p-4 border-t border-slate-100">
+            <div class="flex items-center gap-3 p-3 bg-indigo-50 rounded-2xl">
+                <div class="w-10 h-10 bg-indigo-600 rounded-xl flex items-center justify-center text-white font-bold">S</div>
+                <div class="flex flex-col">
+                    <span class="text-xs font-bold text-slate-800">Member</span>
+                    <span class="text-[10px] text-indigo-600 font-medium">All Languages Active</span>
+                </div>
+            </div>
+        </div>
+    </aside>
+
+    <!-- Main View -->
+    <main class="flex-1 flex flex-col h-full bg-slate-50 relative overflow-hidden">
+        <header class="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-6">
+            <div class="flex items-center gap-3">
+                <button onclick="toggleSidebar()" class="p-2 hover:bg-slate-100 rounded-lg">
+                    <svg class="w-6 h-6 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/></svg>
+                </button>
+                <div class="flex flex-col">
+                    <span class="text-xs font-bold text-slate-800" id="current-lang-display">English Mode</span>
+                    <span class="text-[9px] text-emerald-600 font-black uppercase tracking-tighter">Vision & File Engine Active</span>
+                </div>
+            </div>
+            <button onclick="generateMedia('image')" class="p-2 bg-slate-900 text-white rounded-full hover:scale-110 transition-transform">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+            </button>
+        </header>
+
+        <div id="chat-messages" class="flex-1 overflow-y-auto p-4 md:p-8 space-y-6 custom-scrollbar scroll-smooth">
+            <div id="welcome-box" class="flex flex-col items-center justify-center h-full text-center space-y-6 py-20">
+                <div class="w-20 h-20 bg-indigo-600 rounded-3xl flex items-center justify-center shadow-2xl">
+                    <svg class="w-10 h-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"/></svg>
+                </div>
+                <h3 class="text-3xl font-black text-slate-900">Upload & Translate</h3>
+                <p class="text-slate-500 text-sm max-w-sm">Select any language from the menu. Upload photos, videos, or documents using the <b>+</b> button.</p>
+            </div>
+        </div>
+
+        <!-- Attachment Menu -->
+        <div id="attachment-menu" class="hidden absolute bottom-28 left-6 md:left-10 z-50 bg-white shadow-2xl rounded-3xl border border-slate-100 p-2 flex flex-col gap-1 scale-0 opacity-0 transition-all origin-bottom-left">
+            <button onclick="triggerFile('image/*')" class="flex items-center gap-3 p-3 hover:bg-slate-50 rounded-2xl transition-all">
+                <div class="w-10 h-10 bg-rose-100 text-rose-600 rounded-xl flex items-center justify-center"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg></div>
+                <span class="text-xs font-bold text-slate-700 pr-4">Photo</span>
+            </button>
+            <button onclick="triggerFile('video/*')" class="flex items-center gap-3 p-3 hover:bg-slate-50 rounded-2xl transition-all">
+                <div class="w-10 h-10 bg-blue-100 text-blue-600 rounded-xl flex items-center justify-center"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg></div>
+                <span class="text-xs font-bold text-slate-700 pr-4">Video</span>
+            </button>
+            <button onclick="triggerFile('*/*')" class="flex items-center gap-3 p-3 hover:bg-slate-50 rounded-2xl transition-all">
+                <div class="w-10 h-10 bg-amber-100 text-amber-600 rounded-xl flex items-center justify-center"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg></div>
+                <span class="text-xs font-bold text-slate-700 pr-4">File</span>
+            </button>
+        </div>
+
+        <input type="file" id="hidden-file-input" class="hidden">
+
+        <div class="p-4 md:p-8">
+            <div id="typing-indicator" class="hidden mb-3 ml-4 flex items-center gap-2 text-indigo-600 text-[10px] font-black uppercase">
+                <span class="animate-pulse">Analyzing...</span>
+            </div>
+            <div class="max-w-4xl mx-auto bg-white border border-slate-200 rounded-[2rem] shadow-2xl p-2 flex items-end focus-within:ring-2 focus-within:ring-indigo-500/20 transition-all">
+                <button id="attach-btn" class="p-4 bg-slate-100 text-slate-500 rounded-2xl hover:bg-slate-200 transition-all active:scale-95">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+                </button>
+                <textarea id="user-input" rows="1" placeholder="Type in any language..." class="flex-1 border-none focus:ring-0 p-4 text-slate-800 font-medium bg-transparent resize-none max-h-48"></textarea>
+                <button id="send-btn" class="p-4 bg-indigo-600 text-white rounded-2xl hover:bg-indigo-700 active:scale-95 transition-all shadow-lg">
+                    <svg class="w-6 h-6 rotate-90" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/></svg>
+                </button>
+            </div>
+        </div>
+    </main>
+
+    <script type="module">
+        const apiKey = "AIzaSyDeWHhpWT_R7DDKl_Ln_WwGFXK4TDyCL9k";
+        const chatMessages = document.getElementById('chat-messages');
+        const userInput = document.getElementById('user-input');
+        const sendBtn = document.getElementById('send-btn');
+        const typingIndicator = document.getElementById('typing-indicator');
+        const langSelector = document.getElementById('language-selector');
+        const langDisplay = document.getElementById('current-lang-display');
+        const attachBtn = document.getElementById('attach-btn');
+        const attachmentMenu = document.getElementById('attachment-menu');
+        const fileInput = document.getElementById('hidden-file-input');
+        
+        let currentLang = "English";
+
+        window.toggleSidebar = () => {
+            const sb = document.getElementById('sidebar');
+            sb.classList.toggle('-translate-x-full');
+        };
+
+        langSelector.onchange = (e) => {
+            currentLang = e.target.value;
+            langDisplay.textContent = `${currentLang} Mode`;
+            showToast(`Language set to ${currentLang}`);
+            if (window.innerWidth < 768) toggleSidebar();
+        };
+
+        attachBtn.onclick = (e) => {
+            e.stopPropagation();
+            const isOpen = !attachmentMenu.classList.contains('hidden');
+            if (isOpen) {
+                closeAttachmentMenu();
+            } else {
+                attachmentMenu.classList.remove('hidden');
+                setTimeout(() => {
+                    attachmentMenu.classList.add('scale-100', 'opacity-100');
+                    attachBtn.classList.add('upload-btn-active');
+                }, 10);
+            }
+        };
+
+        function closeAttachmentMenu() {
+            attachmentMenu.classList.remove('scale-100', 'opacity-100');
+            attachBtn.classList.remove('upload-btn-active');
+            setTimeout(() => attachmentMenu.classList.add('hidden'), 200);
+        }
+
+        document.body.onclick = () => closeAttachmentMenu();
+
+        window.triggerFile = (accept) => {
+            fileInput.accept = accept;
+            fileInput.click();
+        };
+
+        fileInput.onchange = (e) => {
+            const file = e.target.files[0];
+            if (file) {
+                showToast(`Uploading ${file.name}...`);
+                renderMessage(`[Uploaded File: ${file.name}]`, true);
+            }
+        };
+
+        window.showToast = (msg) => {
+            const t = document.getElementById('toast');
+            t.textContent = msg;
+            t.classList.remove('hidden');
+            setTimeout(() => t.classList.add('hidden'), 3000);
+        };
+
+        async function sendMessage() {
+            const text = userInput.value.trim();
+            if (!text) return;
+            document.getElementById('welcome-box').classList.add('hidden');
+            renderMessage(text, true);
+            userInput.value = '';
+            typingIndicator.classList.remove('hidden');
+            
+            try {
+                const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        contents: [{ parts: [{ text: `Respond in ${currentLang}. User Query: ${text}` }] }]
+                    })
+                });
+                const data = await response.json();
+                const aiText = data.candidates?.[0]?.content?.parts?.[0]?.text || "Error.";
+                renderMessage(aiText, false);
+            } catch (err) {
+                renderMessage("Error connecting.", false);
+            } finally {
+                typingIndicator.classList.add('hidden');
+            }
+        }
+
+        function renderMessage(text, isUser) {
+            const div = document.createElement('div');
+            div.className = `flex ${isUser ? 'justify-end' : 'justify-start'} w-full message-bubble`;
+            div.innerHTML = `
+                <div class="relative max-w-[85%] md:max-w-[75%] p-5 rounded-[2rem] shadow-lg ${isUser ? 'bg-indigo-600 text-white rounded-tr-none' : 'bg-white border border-slate-200 text-slate-800 rounded-tl-none'}">
+                    <div class="text-sm leading-relaxed">${marked.parse(text)}</div>
+                </div>`;
+            chatMessages.appendChild(div);
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+        }
+
+        window.newChat = () => {
+            chatMessages.innerHTML = '';
+            chatMessages.appendChild(document.getElementById('welcome-box'));
+            if (window.innerWidth < 768) toggleSidebar();
+        };
+
+        sendBtn.onclick = sendMessage;
+        userInput.onkeydown = (e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); } };
+    </script>
+</body>
+</html>
